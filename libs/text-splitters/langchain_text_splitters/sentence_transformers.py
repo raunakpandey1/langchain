@@ -85,9 +85,8 @@ class SentenceTransformersTokenTextSplitter(TextSplitter):
     def split_text(self, text: str) -> list[str]:
         """Splits the input text into smaller components by splitting text on tokens.
 
-        This method encodes the input text using a private `_encode` method, then
-        strips the start and stop token IDs from the encoded result. It returns the
-        processed segments as a list of strings.
+        This method encodes the input text without adding model-specific special
+        tokens, then splits and decodes the content tokens into strings.
 
         Args:
             text: The input text to be split.
@@ -97,14 +96,14 @@ class SentenceTransformersTokenTextSplitter(TextSplitter):
                 processing.
         """
 
-        def encode_strip_start_and_stop_token_ids(text: str) -> list[int]:
-            return self._encode(text)[1:-1]
+        def encode_without_special_tokens(text: str) -> list[int]:
+            return self._encode(text, add_special_tokens=False)
 
         tokenizer = Tokenizer(
             chunk_overlap=self._chunk_overlap,
             tokens_per_chunk=self.tokens_per_chunk,
             decode=self.tokenizer.decode,
-            encode=encode_strip_start_and_stop_token_ids,
+            encode=encode_without_special_tokens,
         )
 
         return split_text_on_tokens(text=text, tokenizer=tokenizer)
@@ -125,10 +124,11 @@ class SentenceTransformersTokenTextSplitter(TextSplitter):
 
     _max_length_equal_32_bit_integer: int = 2**32
 
-    def _encode(self, text: str) -> list[int]:
-        token_ids_with_start_and_end_token_ids = self.tokenizer.encode(
+    def _encode(self, text: str, *, add_special_tokens: bool = True) -> list[int]:
+        token_ids = self.tokenizer.encode(
             text,
             max_length=self._max_length_equal_32_bit_integer,
             truncation="do_not_truncate",
+            add_special_tokens=add_special_tokens,
         )
-        return cast("list[int]", token_ids_with_start_and_end_token_ids)
+        return cast("list[int]", token_ids)
